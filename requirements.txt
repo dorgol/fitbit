@@ -1,0 +1,23 @@
+# Core framework
+langgraph>=0.0.40
+langchain>=0.1.0
+anthropic>=0.7.0
+
+# Database
+psycopg2-binary>=2.9.0
+sqlalchemy>=2.0.0
+alembic>=1.12.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# API clients
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Development
+jupyter>=1.0.0
+pytest>=7.4.0
+black>=23.0.0
+flake8>=6.0.0
