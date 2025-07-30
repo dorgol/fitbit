@@ -37,3 +37,4 @@ logs/
 
 # Data
 data/local_*
+tmp.py
