@@ -1,0 +1,12 @@
+Given the following conversation between a user and an assistant,
+extract the following structured information fields (if available).
+Return only a JSON object with these fields.
+
+Fields to extract:
+{{ schema_description }}
+
+Conversation:
+{{ conversation_text }}
+
+Return a JSON object like this:
+{{ extraction_template }}
