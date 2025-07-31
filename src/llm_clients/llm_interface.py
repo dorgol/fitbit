@@ -9,6 +9,14 @@ work with any provider without knowing implementation details.
 import logging
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional
+from dataclasses import dataclass
+
+
+@dataclass
+class LLMResponse:
+    text: str
+    duration_ms: Optional[int] = None
+    model: Optional[str] = None
 
 
 class LLMClient(ABC):
@@ -24,7 +32,7 @@ class LLMClient(ABC):
         conversation_history: Optional[List[Dict[str, str]]] = None,
         system_prompt: Optional[str] = None,
         **kwargs
-    ) -> str:
+    ) -> LLMResponse:
         """
         Main conversational method
 

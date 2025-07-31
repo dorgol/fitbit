@@ -17,8 +17,8 @@ sys.path.append('src')
 from memory.database import (
     DatabaseManager, Conversation, Highlight, HighlightSchema
 )
-from api.llm_factory import get_llm_client
-from api.llm_interface import LLMError
+from llm_clients.llm_factory import get_llm_client
+from llm_clients.llm_interface import LLMError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

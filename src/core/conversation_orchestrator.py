@@ -15,8 +15,8 @@ import logging
 # Add src to path for imports
 sys.path.append('src')
 
-from api.llm_factory import get_llm_client
-from api.llm_interface import LLMError
+from llm_clients.llm_factory import get_llm_client
+from llm_clients.llm_interface import LLMError
 from core.context_assembly import ContextAssembler
 from memory.database import DatabaseManager, User, Conversation, get_db_session
 import uuid

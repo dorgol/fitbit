@@ -10,7 +10,7 @@ from typing import List, Dict, Optional
 import anthropic
 from anthropic import APIError, RateLimitError, APIConnectionError
 
-from .llm_interface import LLMClient, LLMError, LLMUnavailableError, LLMRateLimitError
+from .llm_interface import LLMClient, LLMError, LLMUnavailableError, LLMRateLimitError, LLMResponse
 
 
 class ClaudeClient(LLMClient):
@@ -39,7 +39,7 @@ class ClaudeClient(LLMClient):
         conversation_history: Optional[List[Dict[str, str]]] = None,
         system_prompt: Optional[str] = None,
         **kwargs
-    ) -> str:
+    ) -> LLMResponse:
         """
         Send a message to Claude and get response
 
@@ -89,8 +89,12 @@ class ClaudeClient(LLMClient):
                 "response_snippet": content[:100]  # trim for log size
             })
 
-            if content:
-                return content
+            if response.content and len(response.content) > 0:
+                return LLMResponse(
+                    text=response.content[0].text,
+                    duration_ms=duration,
+                    model=self.model
+                )
             else:
                 raise LLMError("Empty response from Claude", "claude")
 
