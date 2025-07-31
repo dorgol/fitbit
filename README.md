@@ -227,8 +227,3 @@ This plan prepares the system for real-world usage with a scalable, secure, and 
   ```bash
   streamlit run app/main.py --server.headless true
   ```
-* If using Jupyter or VSCode, manually open the printed URL in your browser.
-
----
-
-This concludes the technical design and implementation documentation for the Fitbit AI Assistant.
