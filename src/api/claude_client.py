@@ -5,6 +5,7 @@ Handles all Claude-specific API calls and converts them to our standard interfac
 """
 
 import os
+import time
 from typing import List, Dict, Optional
 import anthropic
 from anthropic import APIError, RateLimitError, APIConnectionError
@@ -23,6 +24,7 @@ class ClaudeClient(LLMClient):
             api_key: Anthropic API key (defaults to ANTHROPIC_API_KEY env var)
             model: Claude model to use
         """
+        super().__init__()
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         self.model = model
 
@@ -49,49 +51,63 @@ class ClaudeClient(LLMClient):
 
         Returns:
             str: Claude's response
+
+        Raises:
+            LLMError: If the request fails
         """
+        start = time.time()
+
         try:
-            # Build messages array
-            messages = []
-
-            # Add conversation history if provided
-            if conversation_history:
-                messages.extend(conversation_history)
-
-            # Add current user message
+            messages = conversation_history or []
             messages.append({"role": "user", "content": user_message})
 
-            # Prepare API call parameters
             api_params = {
                 "model": self.model,
                 "max_tokens": kwargs.get("max_tokens", 1000),
-                "messages": messages
+                "messages": messages,
             }
 
-            # Add system prompt if provided
             if system_prompt:
                 api_params["system"] = system_prompt
 
-            # Add other Claude-specific parameters
             if "temperature" in kwargs:
                 api_params["temperature"] = kwargs["temperature"]
 
-            # Make API call
+            self.logger.debug("Sending request to Claude", extra={
+                "model": self.model,
+                "prompt_length": len(user_message),
+                "conversation_turns": len(messages)
+            })
+
             response = self.client.messages.create(**api_params)
 
-            # Extract text from response
-            if response.content and len(response.content) > 0:
-                return response.content[0].text
+            duration = time.time() - start
+            content = response.content[0].text if response.content else ""
+
+            self.logger.info("Received response from Claude", extra={
+                "duration_sec": round(duration, 3),
+                "response_snippet": content[:100]  # trim for log size
+            })
+
+            if content:
+                return content
             else:
                 raise LLMError("Empty response from Claude", "claude")
 
         except RateLimitError as e:
+            self.logger.warning("Claude rate limit hit", exc_info=True)
             raise LLMRateLimitError("Claude rate limit exceeded", "claude", e)
+
         except APIConnectionError as e:
+            self.logger.error("Claude API connection failed", exc_info=True)
             raise LLMUnavailableError("Cannot connect to Claude API", "claude", e)
+
         except APIError as e:
+            self.logger.error("Claude API error", exc_info=True)
             raise LLMError(f"Claude API error: {str(e)}", "claude", e)
+
         except Exception as e:
+            self.logger.exception("Unexpected Claude client error")
             raise LLMError(f"Unexpected error with Claude: {str(e)}", "claude", e)
 
     def is_available(self) -> bool:
@@ -102,14 +118,14 @@ class ClaudeClient(LLMClient):
             bool: True if available, False otherwise
         """
         try:
-            # Send a minimal test message
-            test_response = self.client.messages.create(
+            self.client.messages.create(
                 model=self.model,
                 max_tokens=10,
                 messages=[{"role": "user", "content": "test"}]
             )
             return True
-        except Exception:
+        except Exception as e:
+            self.logger.warning("Claude availability check failed", exc_info=True)
             return False
 
     def __str__(self):

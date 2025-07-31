@@ -382,7 +382,7 @@ def create_conversation_orchestrator() -> ConversationOrchestrator:
 
 
 def chat_with_user(user_id: str, message: str, conversation_id: str = None) -> Dict[str, Any]:
-    """Simple function for chatting with a user"""
+    """Simple function for chatting with a user - main entry point for frontend"""
     orchestrator = create_conversation_orchestrator()
     return orchestrator.chat(user_id, message, conversation_id)
 
@@ -397,13 +397,23 @@ if __name__ == "__main__":
         if user:
             print(f"Testing conversation with user {user.id}")
 
-            # Test conversation
-            result = chat_with_user(str(user.id), "How did I sleep last night?")
+            # Test multiple conversation types
+            test_questions = [
+                "Should I exercise outside today?",
+                "What's a good time to go for a walk?",
+                "How did I sleep last night?",
+                "I'm thinking about going for a run"
+            ]
 
-            print(f"Response: {result['response']}")
-            print(f"Conversation ID: {result['conversation_id']}")
-            if result['error']:
-                print(f"Error: {result['error']}")
+            for question in test_questions:
+                print(f"\n--- Testing: '{question}' ---")
+                result = chat_with_user(str(user.id), question)
+
+                print(f"Response: {result['response']}")
+                print(f"Conversation ID: {result['conversation_id']}")
+                if result['error']:
+                    print(f"Error: {result['error']}")
+                print()
 
         else:
             print("No users found in database")

@@ -1,229 +1,251 @@
 """
-Test script for highlights extraction system
+Debug Tool for Conversation Memory Issues
+
+This script helps identify where the conversation memory is breaking:
+1. Frontend session state
+2. Backend conversation orchestrator
+3. Database storage
+4. Context assembly
 """
 
 import sys
-import os
-import json
-from datetime import datetime, timezone
-
-# Add src to path
 sys.path.append('src')
 
-from src.memory.database import DatabaseManager, User, Conversation, Highlight, get_db_session
-from src.memory.highlights import HighlightsExtractor
+from memory.database import get_db_session, User, Conversation
+from core.conversation_orchestrator import chat_with_user, create_conversation_orchestrator
+from core.context_assembly import ContextAssembler
+import json
 
+def test_frontend_session_simulation():
+    """Simulate what the frontend should be doing"""
+    print("=== FRONTEND SESSION SIMULATION ===")
 
-def test_highlights_extraction():
-    """Test the highlights extraction process"""
-    print("=== TESTING HIGHLIGHTS EXTRACTION ===\n")
+    # Simulate user selection
+    user_id = "1"  # Assuming user 1 exists
 
-    extractor = HighlightsExtractor()
+    # Simulate session state (like Streamlit would have)
+    session_state = {
+        'conversation_history': {user_id: []},
+        'conversation_id': {user_id: None}
+    }
 
-    # Check for existing conversations
+    print(f"Initial session state for user {user_id}:")
+    print(f"  History: {session_state['conversation_history'][user_id]}")
+    print(f"  Conv ID: {session_state['conversation_id'][user_id]}")
+
+    # Simulate first message
+    message1 = "How did I sleep last night?"
+    print(f"\n--- Sending message 1: '{message1}' ---")
+
+    result1 = chat_with_user(user_id, message1, session_state['conversation_id'][user_id])
+
+    # Update session state (like frontend should)
+    session_state['conversation_history'][user_id].append({'role': 'user', 'content': message1})
+    session_state['conversation_history'][user_id].append({'role': 'assistant', 'content': result1['response']})
+    session_state['conversation_id'][user_id] = result1['conversation_id']
+
+    print(f"Result 1: {result1['response'][:100]}...")
+    print(f"Conv ID after message 1: {result1['conversation_id']}")
+    print(f"Session history length: {len(session_state['conversation_history'][user_id])}")
+
+    # Simulate second message
+    message2 = "What about my steps yesterday?"
+    print(f"\n--- Sending message 2: '{message2}' ---")
+
+    # This is the KEY TEST - does it remember the first message?
+    result2 = chat_with_user(user_id, message2, session_state['conversation_id'][user_id])
+
+    print(f"Result 2: {result2['response'][:100]}...")
+    print(f"Conv ID after message 2: {result2['conversation_id']}")
+
+    # Update session state
+    session_state['conversation_history'][user_id].append({'role': 'user', 'content': message2})
+    session_state['conversation_history'][user_id].append({'role': 'assistant', 'content': result2['response']})
+
+    print(f"Final session history length: {len(session_state['conversation_history'][user_id])}")
+
+    return session_state, result1, result2
+
+def test_database_conversation_storage():
+    """Check if conversations are being stored correctly in database"""
+    print("\n=== DATABASE CONVERSATION STORAGE TEST ===")
+
     session = get_db_session()
     try:
-        conversations = session.query(Conversation).filter(
-            Conversation.status == "completed"
-        ).all()
+        # Get recent conversations
+        conversations = session.query(Conversation).order_by(Conversation.created_at.desc()).limit(3).all()
 
-        if not conversations:
-            print("No completed conversations found. Need to create some test conversations first.")
-            return
+        print(f"Found {len(conversations)} recent conversations:")
 
-        print(f"Found {len(conversations)} completed conversations to test")
+        for conv in conversations:
+            print(f"\nConversation {conv.id}:")
+            print(f"  User ID: {conv.user_id}")
+            print(f"  Status: {conv.status}")
+            print(f"  Message count: {len(conv.messages or [])}")
+            print(f"  Created: {conv.created_at}")
 
-        # Test individual conversation processing
-        for i, conversation in enumerate(conversations[:2]):  # Test first 2
-            print(f"\n--- Testing Conversation {conversation.id} (User {conversation.user_id}) ---")
-
-            # Show the conversation content
-            print("Conversation content:")
-            for msg in conversation.messages:
-                role = msg.get("role", "unknown")
-                content = msg.get("content", "")[:100] + "..." if len(msg.get("content", "")) > 100 else msg.get("content", "")
-                print(f"  {role.capitalize()}: {content}")
-
-            # Extract highlights
-            try:
-                highlights = extractor.extract_highlights_from_conversation(conversation.id)
-
-                if highlights:
-                    print(f"\n✓ Extracted highlights:")
-                    print(f"Structured data: {json.dumps(highlights['structured_data'], indent=2)}")
-                    print(f"Unstructured notes: {highlights['unstructured_notes']}")
-
-                    # Store highlights
-                    success = extractor.store_highlights(conversation.id, conversation.user_id, highlights)
-                    if success:
-                        print("✓ Stored highlights in database")
-                    else:
-                        print("✗ Failed to store highlights")
-                else:
-                    print("✗ No highlights extracted")
-
-            except Exception as e:
-                print(f"✗ Error processing conversation: {e}")
-
-            print("\n" + "="*50)
+            if conv.messages:
+                print("  Messages:")
+                for i, msg in enumerate(conv.messages):
+                    role = msg.get('role', 'unknown')
+                    content = msg.get('content', '')[:50] + "..." if len(msg.get('content', '')) > 50 else msg.get('content', '')
+                    print(f"    {i+1}. {role}: {content}")
+            else:
+                print("  No messages found!")
 
     finally:
         session.close()
 
+def test_conversation_orchestrator_directly():
+    """Test the conversation orchestrator without frontend"""
+    print("\n=== DIRECT CONVERSATION ORCHESTRATOR TEST ===")
 
-def test_batch_processing():
-    """Test batch processing of all conversations"""
-    print("\n=== TESTING BATCH PROCESSING ===\n")
+    user_id = "1"
+    orchestrator = create_conversation_orchestrator()
 
-    extractor = HighlightsExtractor()
+    print("Testing conversation continuity...")
+
+    # First message
+    print(f"\n--- Message 1 ---")
+    result1 = orchestrator.chat(user_id, "How did I sleep last night?")
+    print(f"Response 1: {result1['response'][:100]}...")
+    print(f"Conversation ID: {result1['conversation_id']}")
+    print(f"Error: {result1.get('error')}")
+
+    # Second message with conversation ID
+    print(f"\n--- Message 2 (with conversation ID) ---")
+    result2 = orchestrator.chat(user_id, "What about my heart rate?", conversation_id=result1['conversation_id'])
+    print(f"Response 2: {result2['response'][:100]}...")
+    print(f"Conversation ID: {result2['conversation_id']}")
+    print(f"Error: {result2.get('error')}")
+
+    # Check if second response references first message context
+    if "sleep" in result2['response'].lower() or "previous" in result2['response'].lower():
+        print("✅ Conversation appears to have memory!")
+    else:
+        print("❌ Conversation appears to have no memory of previous message")
+
+    return result1, result2
+
+def test_context_assembly():
+    """Test if context assembly includes conversation history"""
+    print("\n=== CONTEXT ASSEMBLY TEST ===")
+
+    user_id = 1
+    assembler = ContextAssembler()
 
     try:
-        results = extractor.process_all_completed_conversations()
-        print(f"Batch processing results: {results}")
+        context_result = assembler.get_conversation_context(user_id)
+        context = context_result['context']
+        system_prompt = context_result['system_prompt']
 
-        # Show what's now in the database
-        session = get_db_session()
-        try:
-            highlights = session.query(Highlight).all()
-            print(f"\nTotal highlights in database: {len(highlights)}")
+        print(f"Context keys: {list(context.keys())}")
+        print(f"System prompt length: {len(system_prompt)}")
 
-            for highlight in highlights:
-                print(f"\nUser {highlight.user_id}, Conversation {highlight.conversation_id}:")
-                print(f"  Structured: {highlight.structured_data}")
-                print(f"  Notes: {highlight.unstructured_notes}")
-                print(f"  Extracted: {highlight.extracted_at}")
+        # Check highlights (conversation memory)
+        highlights = context.get('highlights', {})
+        if highlights:
+            print(f"Highlights found: {highlights.get('structured_data', {}).keys()}")
+            print(f"Unstructured notes: {highlights.get('unstructured_notes', 'None')[:100]}...")
+        else:
+            print("No highlights found - this might be the issue!")
 
-        finally:
-            session.close()
+        # Check if system prompt mentions conversation history
+        if "conversation" in system_prompt.lower() or "previous" in system_prompt.lower():
+            print("✅ System prompt appears to include conversation context")
+        else:
+            print("❌ System prompt may not include conversation context")
 
     except Exception as e:
-        print(f"✗ Batch processing error: {e}")
+        print(f"Error in context assembly: {e}")
 
+def inspect_langgraph_state():
+    """Try to inspect what's happening in the LangGraph workflow"""
+    print("\n=== LANGGRAPH WORKFLOW INSPECTION ===")
 
-def test_user_summary():
-    """Test getting consolidated user highlights"""
-    print("\n=== TESTING USER HIGHLIGHTS SUMMARY ===\n")
+    # This is tricky since LangGraph workflow is internal
+    # But we can check if the orchestrator is loading conversation history
 
-    extractor = HighlightsExtractor()
     session = get_db_session()
-
     try:
-        users = session.query(User).all()
+        # Get a conversation with multiple messages
+        conversation = session.query(Conversation).filter(
+            Conversation.messages.isnot(None)
+        ).first()
 
-        for user in users[:2]:  # Test first 2 users
-            print(f"\n--- User {user.id} Highlights Summary ---")
+        if conversation and len(conversation.messages or []) > 2:
+            print(f"Found conversation {conversation.id} with {len(conversation.messages)} messages")
 
-            summary = extractor.get_user_highlights_summary(user.id)
+            # The question is: does the orchestrator pass these messages to the LLM?
+            print("Checking if messages are properly formatted for LLM...")
 
-            print(f"Consolidated structured data:")
-            for key, value in summary["structured_data"].items():
-                if value:
-                    print(f"  {key}: {value}")
+            messages = conversation.messages
+            llm_format_messages = []
 
-            print(f"\nCombined notes: {summary['unstructured_notes']}")
-            print(f"Source conversations: {summary['source_conversations']}")
-            print(f"Last updated: {summary['last_updated']}")
+            for msg in messages:
+                if msg.get('role') and msg.get('content'):
+                    llm_format_messages.append({
+                        'role': msg['role'],
+                        'content': msg['content']
+                    })
+
+            print(f"LLM-formatted messages: {len(llm_format_messages)}")
+            for i, msg in enumerate(llm_format_messages):
+                print(f"  {i+1}. {msg['role']}: {msg['content'][:50]}...")
+
+            if len(llm_format_messages) >= 2:
+                print("✅ Conversation history exists and is properly formatted")
+            else:
+                print("❌ Conversation history is missing or malformed")
+        else:
+            print("No multi-message conversations found to inspect")
 
     finally:
         session.close()
 
+def main():
+    """Run all debug tests"""
+    print("🔍 CONVERSATION MEMORY DEBUG TOOL")
+    print("=" * 50)
 
-def create_test_conversation():
-    """Create a richer test conversation for better highlight extraction"""
-    print("\n=== CREATING RICH TEST CONVERSATION ===\n")
-
-    session = get_db_session()
-
+    # Test 1: Simulate what frontend should do
     try:
-        # Get first user
-        user = session.query(User).first()
-        if not user:
-            print("No users found")
-            return
-
-        # Create a conversation with more detailed health context
-        rich_conversation = Conversation(
-            user_id=user.id,
-            messages=[
-                {
-                    "role": "user",
-                    "content": "I'm having trouble sleeping lately. I usually go to bed around 11 PM but I work late shifts that end at 10 PM.",
-                    "timestamp": "2025-01-15T09:00:00Z"
-                },
-                {
-                    "role": "assistant",
-                    "content": "I understand late shifts can make it challenging to wind down. What time do you typically need to wake up for work?",
-                    "timestamp": "2025-01-15T09:00:05Z"
-                },
-                {
-                    "role": "user",
-                    "content": "I wake up at 6 AM usually. Also, I'm allergic to dairy and I've been stressed about a big project at work. I prefer doing yoga for exercise but haven't had time lately.",
-                    "timestamp": "2025-01-15T09:01:00Z"
-                },
-                {
-                    "role": "assistant",
-                    "content": "That's quite a short sleep window with your schedule. Yoga is excellent for stress relief and better sleep. Have you considered doing some gentle stretches before bed to help transition from work stress?",
-                    "timestamp": "2025-01-15T09:01:10Z"
-                },
-                {
-                    "role": "user",
-                    "content": "That's a good idea. I'm also trying to hit 10,000 steps daily as my main fitness goal. My doctor mentioned I should track my heart rate too because of family history of heart disease.",
-                    "timestamp": "2025-01-15T09:02:00Z"
-                },
-                {
-                    "role": "assistant",
-                    "content": "Great goals! With your family history, tracking heart rate is wise. Since you prefer yoga, we could explore ways to integrate more movement into your day that works with your late shift schedule.",
-                    "timestamp": "2025-01-15T09:02:15Z"
-                }
-            ],
-            status="completed",
-            ended_at=datetime.now(timezone.utc)
-        )
-
-        session.add(rich_conversation)
-        session.commit()
-
-        print(f"✓ Created rich test conversation with ID {rich_conversation.id}")
-        print("This conversation includes:")
-        print("- Work schedule details (late shifts, 10 PM end)")
-        print("- Sleep schedule (11 PM bedtime, 6 AM wake)")
-        print("- Allergies (dairy)")
-        print("- Stress sources (work project)")
-        print("- Exercise preferences (yoga)")
-        print("- Health concerns (family heart disease history)")
-        print("- Goals (10k steps daily)")
-
-        return rich_conversation.id
-
+        session_state, result1, result2 = test_frontend_session_simulation()
     except Exception as e:
-        session.rollback()
-        print(f"✗ Error creating test conversation: {e}")
-        return None
-    finally:
-        session.close()
+        print(f"Frontend simulation failed: {e}")
 
+    # Test 2: Check database storage
+    try:
+        test_database_conversation_storage()
+    except Exception as e:
+        print(f"Database test failed: {e}")
+
+    # Test 3: Test orchestrator directly
+    try:
+        test_conversation_orchestrator_directly()
+    except Exception as e:
+        print(f"Orchestrator test failed: {e}")
+
+    # Test 4: Check context assembly
+    try:
+        test_context_assembly()
+    except Exception as e:
+        print(f"Context assembly test failed: {e}")
+
+    # Test 5: Inspect LangGraph workflow
+    try:
+        inspect_langgraph_state()
+    except Exception as e:
+        print(f"LangGraph inspection failed: {e}")
+
+    print("\n" + "=" * 50)
+    print("🔍 DEBUG COMPLETE")
+    print("\nKey things to check:")
+    print("1. Are conversations being stored in database with multiple messages?")
+    print("2. Is the conversation_id being passed correctly between messages?")
+    print("3. Is the LangGraph workflow loading conversation history?")
+    print("4. Is the conversation history being passed to the LLM?")
+    print("5. Is the frontend maintaining conversation_id across messages?")
 
 if __name__ == "__main__":
-    # Create a rich test conversation first
-    conversation_id = create_test_conversation()
-
-    if conversation_id:
-        print(f"\nNow testing highlights extraction on conversation {conversation_id}...")
-
-        # Test the extraction specifically on our rich conversation
-        extractor = HighlightsExtractor()
-        highlights = extractor.extract_highlights_from_conversation(conversation_id)
-
-        if highlights:
-            print(f"\n✓ Successfully extracted highlights from rich conversation:")
-            print(json.dumps(highlights, indent=2))
-        else:
-            print("✗ Failed to extract highlights from rich conversation")
-
-    # Run all tests
-    test_highlights_extraction()
-    test_batch_processing()
-    test_user_summary()
-
-    print("\n=== HIGHLIGHTS TESTING COMPLETE ===")
-    print("If you see extracted highlights above, the system is working!")
+    main()

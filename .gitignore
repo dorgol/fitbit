@@ -38,3 +38,4 @@ logs/
 # Data
 data/local_*
 tmp.py
+project_export.txt

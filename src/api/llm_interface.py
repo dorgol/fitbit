@@ -6,20 +6,24 @@ This interface provides a clean abstraction for different LLM providers
 work with any provider without knowing implementation details.
 """
 
+import logging
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 
 
 class LLMClient(ABC):
     """Abstract base class for LLM providers"""
 
+    def __init__(self):
+        self.logger = logging.getLogger(self.__class__.__name__)
+
     @abstractmethod
     def chat(
-            self,
-            user_message: str,
-            conversation_history: Optional[List[Dict[str, str]]] = None,
-            system_prompt: Optional[str] = None,
-            **kwargs
+        self,
+        user_message: str,
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+        system_prompt: Optional[str] = None,
+        **kwargs
     ) -> str:
         """
         Main conversational method
@@ -28,30 +32,30 @@ class LLMClient(ABC):
             user_message: The user's current message
             conversation_history: List of previous messages in format:
                 [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
-            system_prompt: Optional system prompt to override default
-            **kwargs: Provider-specific parameters (temperature, max_tokens, etc.)
+            system_prompt: Optional system prompt to guide behavior
+            **kwargs: Provider-specific options (temperature, max_tokens, etc.)
 
         Returns:
-            str: The LLM's response message
+            str: The LLM's response
 
         Raises:
-            LLMError: If the API call fails
+            LLMError: If the provider fails to respond
         """
         pass
 
     @abstractmethod
     def is_available(self) -> bool:
         """
-        Quick health check to see if this provider is accessible
+        Lightweight health check for provider availability
 
         Returns:
-            bool: True if provider is available, False otherwise
+            bool: True if the provider is reachable and functional
         """
         pass
 
 
 class LLMError(Exception):
-    """Base exception for LLM-related errors"""
+    """Base exception for LLM-related issues"""
 
     def __init__(self, message: str, provider: str = None, original_error: Exception = None):
         self.message = message
@@ -61,10 +65,10 @@ class LLMError(Exception):
 
 
 class LLMUnavailableError(LLMError):
-    """Raised when an LLM provider is temporarily unavailable"""
+    """Raised when the LLM provider is unreachable (e.g., network issues)"""
     pass
 
 
 class LLMRateLimitError(LLMError):
-    """Raised when rate limits are exceeded"""
+    """Raised when the LLM provider returns a rate limit error"""
     pass
