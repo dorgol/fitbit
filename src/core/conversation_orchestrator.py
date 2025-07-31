@@ -109,7 +109,6 @@ class ConversationOrchestrator:
             )
 
             updated = history + [
-                {"role": "user", "content": user_message},
                 {"role": "assistant", "content": response.text}
             ]
 
@@ -196,6 +195,9 @@ class ConversationOrchestrator:
             stop_conversation=False
         )
         return self.workflow.invoke(state)
+
+def create_conversation_orchestrator():
+    return ConversationOrchestrator()
 
 
 if __name__ == "__main__":

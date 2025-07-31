@@ -15,7 +15,7 @@ from dataclasses import dataclass
 @dataclass
 class LLMResponse:
     text: str
-    duration_ms: Optional[int] = None
+    duration_ms: Optional[float] = None
     model: Optional[str] = None
 
 
