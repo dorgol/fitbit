@@ -16,7 +16,7 @@ import logging
 # Add src to path for imports
 sys.path.append('src')
 
-from ..memory.database import (
+from memory.database import (
     DatabaseManager, User, HealthMetric, Insight
 )
 
@@ -69,7 +69,8 @@ class InsightsGenerator:
 
         return insights
 
-    def _get_metric_values(self, session: Session, user_id: int, metric_type: str,
+    @staticmethod
+    def _get_metric_values(session: Session, user_id: int, metric_type: str,
                           days_back: int) -> List[Tuple[datetime, float]]:
         """Get metric values with timestamps for analysis"""
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_back)
@@ -212,7 +213,8 @@ class InsightsGenerator:
 
         return insights
 
-    def _analyze_heart_rate_trends(self, session: Session, user_id: int, days_back: int) -> List[Dict]:
+    @staticmethod
+    def _analyze_heart_rate_trends(session: Session, user_id: int, days_back: int) -> List[Dict]:
         """Analyze resting heart rate trends"""
         insights = []
 
@@ -312,7 +314,8 @@ class InsightsGenerator:
 
         return insights
 
-    def _detect_correlations(self, session: Session, user_id: int, days_back: int) -> List[Dict]:
+    @staticmethod
+    def _detect_correlations(session: Session, user_id: int, days_back: int) -> List[Dict]:
         """Detect correlations between different metrics"""
         insights = []
 
@@ -458,45 +461,55 @@ class InsightsGenerator:
 
         return stored_count
 
-    def process_all_users(self, lookback_days: int = 30) -> Dict[str, int]:
-        """Process insights for all users (main batch job function)"""
-        session = self.db_manager.get_session()
-        results = {"processed": 0, "insights_generated": 0, "errors": 0}
 
-        try:
-            # Get all users
-            users = session.query(User).all()
 
-            for user in users:
-                try:
-                    # Generate insights
-                    insights = self.generate_insights_for_user(user.id, lookback_days)
+def process_all_users(lookback_days: int = 30) -> Dict[str, int]:
+    """
+    Process insights for all users (main batch job function)
 
-                    # Store in database
-                    stored = self.store_insights(user.id, insights)
+    Args:
+        lookback_days: How far back to look when analyzing health data
 
-                    results["processed"] += 1
-                    results["insights_generated"] += stored
+    Returns:
+        A summary dictionary with counts of processed users, insights, and errors
+    """
+    db_manager = DatabaseManager()
+    session = db_manager.get_session()
+    generator = InsightsGenerator()
 
-                    logger.info(f"Processed user {user.id}: {stored} insights generated")
+    results = {"processed": 0, "insights_generated": 0, "errors": 0}
 
-                except Exception as e:
-                    logger.error(f"Error processing user {user.id}: {e}")
-                    results["errors"] += 1
+    try:
+        users = session.query(User).all()
 
-        finally:
-            session.close()
+        for user in users:
+            try:
+                insights = generator.generate_insights_for_user(user.id, lookback_days)
+                stored = generator.store_insights(user.id, insights)
 
-        logger.info(f"Batch processing complete: {results}")
-        return results
+                results["processed"] += 1
+                results["insights_generated"] += stored
+
+                logger.info(f"Processed user {user.id}: {stored} insights generated")
+
+            except Exception as e:
+                logger.error(f"Error processing user {user.id}: {e}", exc_info=True)
+                results["errors"] += 1
+
+    finally:
+        session.close()
+
+    logger.info(f"Batch processing complete: {results}")
+    return results
 
 
 def run_daily_insights_batch():
-    """Main function to run the daily insights batch job"""
+    """
+    Main function to run the daily insights batch job
+    """
     logger.info("Starting daily insights batch processing...")
 
-    generator = InsightsGenerator()
-    results = generator.process_all_users(lookback_days=30)
+    results = process_all_users(lookback_days=30)
 
     logger.info(f"Daily insights batch complete: {results}")
     return results

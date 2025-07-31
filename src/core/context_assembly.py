@@ -17,6 +17,7 @@ from memory.database import (
     DatabaseManager, User, HealthMetric, Insight,
     ExternalContext, KnowledgeBase, get_db_session
 )
+from memory.raw_data import RawDataLoader
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -327,47 +328,6 @@ class ContextAssembler:
             "guidelines"
         ]
 
-    def load_raw_data(self, user_id: int, days_back: int = 7) -> Dict[str, Any]:
-        """Load raw health data for the user"""
-        session = self.db_manager.get_session()
-
-        try:
-            # Get user profile
-            user = session.query(User).filter(User.id == user_id).first()
-            if not user:
-                return {}
-
-            user_profile = {
-                "age": user.age,
-                "gender": user.gender,
-                "location": user.location,
-                "goals": user.goals or [],
-                "preferences": user.preferences or {}
-            }
-
-            # Get recent health metrics
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_back)
-
-            recent_metrics = {}
-
-            for metric_type in ["steps", "sleep_duration", "heart_rate"]:
-                metrics = session.query(HealthMetric).filter(
-                    HealthMetric.user_id == user_id,
-                    HealthMetric.metric_type == metric_type,
-                    HealthMetric.timestamp >= cutoff_date
-                ).order_by(HealthMetric.timestamp.desc()).limit(days_back).all()
-
-                if metrics:
-                    recent_metrics[metric_type.replace("_duration", "_hours")] = [m.value for m in reversed(metrics)]
-
-            return {
-                "user_profile": user_profile,
-                "recent_metrics": recent_metrics
-            }
-
-        finally:
-            session.close()
-
     def load_insights(self, user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
         """Load recent insights for the user"""
         session = self.db_manager.get_session()
@@ -449,7 +409,7 @@ class ContextAssembler:
         """Assemble context from all 6 memory layers"""
 
         # Load from all layers
-        raw_data = self.load_raw_data(user_id)
+        raw_data = RawDataLoader().load_user_data(user_id)
         insights = self.load_insights(user_id)
         highlights = self.load_highlights(user_id)
 
