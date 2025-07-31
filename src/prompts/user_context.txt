@@ -1,0 +1,52 @@
+USER CONTEXT:
+
+{% if structured_data %}
+{% set s = structured_data %}
+
+{% set health = [\"allergies\", \"health_concerns\", \"medications\", \"family_health\"] %}
+{% set lifestyle = [\"work_schedule\", \"sleep_schedule\", \"exercise_preferences\", \"nutrition_preferences\"] %}
+{% set goals = [\"goals_mentioned\", \"motivation_factors\", \"stress_sources\"] %}
+
+{% set health_items = [] %}
+{% for field in health %}
+  {% if s.get(field) %}
+    {% set _ = health_items.append(\"- \" + field.replace('_', ' ').title() + \": \" + s.get(field)|string) %}
+  {% endif %}
+{% endfor %}
+{% if health_items %}
+Health Context:
+{{ health_items | join(\"\\n\") }}
+{% endif %}
+
+{% set lifestyle_items = [] %}
+{% for field in lifestyle %}
+  {% if s.get(field) %}
+    {% set _ = lifestyle_items.append(\"- \" + field.replace('_', ' ').title() + \": \" + s.get(field)|string) %}
+  {% endif %}
+{% endfor %}
+{% if lifestyle_items %}
+Lifestyle & Preferences:
+{{ lifestyle_items | join(\"\\n\") }}
+{% endif %}
+
+{% set goal_items = [] %}
+{% for field in goals %}
+  {% if s.get(field) %}
+    {% set _ = goal_items.append(\"- \" + field.replace('_', ' ').title() + \": \" + s.get(field)|string) %}
+  {% endif %}
+{% endfor %}
+{% if goal_items %}
+Goals & Motivation:
+{{ goal_items | join(\"\\n\") }}
+{% endif %}
+
+{% endif %}
+
+{% if unstructured_notes %}
+Additional Context:
+- {{ unstructured_notes }}
+{% endif %}
+
+{% if not structured_data and not unstructured_notes %}
+No previous conversation context available.
+{% endif %}

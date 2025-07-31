@@ -1,0 +1,21 @@
+CURRENT HEALTH DATA:
+
+{% if recent_metrics %}
+Recent Activity Summary:
+{% if recent_metrics.steps %}
+- Daily steps (last {{ recent_metrics.steps | length }} days): {{ recent_metrics.steps }} (avg: {{ (recent_metrics.steps | sum / recent_metrics.steps | length) | round(0) }})
+{% endif %}
+{% if recent_metrics.sleep_hours %}
+- Sleep duration (last {{ recent_metrics.sleep_hours | length }} nights): {{ recent_metrics.sleep_hours }} hours (avg: {{ (recent_metrics.sleep_hours | sum / recent_metrics.sleep_hours | length) | round(1) }}h)
+{% endif %}
+{% if recent_metrics.heart_rate %}
+- Resting heart rate (recent): {{ recent_metrics.heart_rate }} bpm (avg: {{ (recent_metrics.heart_rate | sum / recent_metrics.heart_rate | length) | round(0) }})
+{% endif %}
+{% endif %}
+
+{% if user_profile %}
+User Profile:
+- Age: {{ user_profile.age or 'unknown' }}
+- Goals: {{ user_profile.goals | join(', ') }}
+{% if user_profile.location %}- Location: {{ user_profile.location }}{% endif %}
+{% endif %}

@@ -1,0 +1,13 @@
+RECENT INSIGHTS:
+
+{% if insights %}
+{% set categories = insights | groupby('category') %}
+{% for category, items in categories %}
+{{ category.replace('_', ' ').title() }}:
+{% for insight in items[:3] %}
+- {{ insight.finding }} (confidence: {{ (insight.confidence or 0) * 100 | round(0) }}%, timeframe: {{ insight.timeframe or 'recent' }})
+{% endfor %}
+{% endfor %}
+{% else %}
+No recent insights available.
+{% endif %}

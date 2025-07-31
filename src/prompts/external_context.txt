@@ -1,0 +1,23 @@
+EXTERNAL CONTEXT:
+
+{% set now = current_time %}
+- Current time: {{ now.strftime('%A, %B %d, %Y at %I:%M %p') }}
+
+{% if weather %}
+- Weather:
+  {% set weather_parts = [] %}
+  {% if weather.temperature %}{% set _ = weather_parts.append(weather.temperature ~ '°C') %}{% endif %}
+  {% if weather.condition %}{% set _ = weather_parts.append(weather.condition) %}{% endif %}
+  {% if weather.air_quality %}{% set _ = weather_parts.append('air quality: ' ~ weather.air_quality) %}{% endif %}
+  {{ weather_parts | join(', ') }}
+{% endif %}
+
+{% for key, value in external.items() %}
+  {% if key != 'weather' and value %}
+- {{ key.replace('_', ' ').title() }}: {{ value }}
+  {% endif %}
+{% endfor %}
+
+{% if not weather and external.items() | length == 0 %}
+No external context available.
+{% endif %}

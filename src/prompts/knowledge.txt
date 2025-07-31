@@ -1,0 +1,15 @@
+{% if knowledge %}
+RELEVANT HEALTH KNOWLEDGE:
+
+{% for item in knowledge[:3] %}
+{{ item.topic.replace('_', ' ').title() }}:
+- {{ item.content }}
+{% if item.source %}
+  Source: {{ item.source }}
+{% endif %}
+
+{% endfor %}
+{% else %}
+HEALTH KNOWLEDGE:
+General health and fitness knowledge available as needed.
+{% endif %}
