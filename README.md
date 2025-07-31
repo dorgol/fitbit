@@ -170,3 +170,65 @@ This plan prepares the system for real-world usage with a scalable, secure, and 
 * Expert-approved coaching strategies
 * High-quality, personalized conversation feedback
 * Safe and effective use of user data in recommendations
+
+---
+
+### 9. How to Use This Repo
+
+#### ✅ Prerequisites
+
+* Python 3.9 or later
+* pip (Python package manager)
+* `virtualenv` (recommended)
+
+#### 🛠️ Setup Steps
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone https://github.com/dorgol/fitbit
+   cd fitbit
+   ```
+
+2. **Create and activate a virtual environment:**
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate   # On Windows: .venv\Scripts\activate
+   ```
+
+3. **Install dependencies:**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Set environment variables (if needed):**
+   Create a `.env` file or export them directly in your shell:
+
+   ```bash
+   export CLAUDE_API_KEY=your_api_key_here
+   export OPENWEATHER_API_KEY=your_api_key_here
+   ```
+
+5. **Launch the app:**
+
+   ```bash
+   streamlit run app/main.py
+   ```
+
+6. **Access in your browser:**
+   Open [http://localhost:8501](http://localhost:8501)
+
+#### 🧪 Troubleshooting
+
+* Restart the app using:
+
+  ```bash
+  streamlit run app/main.py --server.headless true
+  ```
+* If using Jupyter or VSCode, manually open the printed URL in your browser.
+
+---
+
+This concludes the technical design and implementation documentation for the Fitbit AI Assistant.
